@@ -29,17 +29,14 @@ public class PlayerController : MonoBehaviour
                 Location newLocation = hit.collider.GetComponent<Location>();
                 if (newLocation != null)
                 {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+
                     StopAllCoroutines();
                     if (currentLocation != null)
                     {
                         currentLocation.containsPlayer = false;
                     }
                     StartCoroutine(MoveCharacter(newLocation));
-=======
-=======
->>>>>>> Stashed changes
+
                     // If a customer is selected, seat them at the clicked free seat and move the player there too
                     if (selectedCustomer != null && !newLocation.containsCustomer && !selectedCustomer.IsSeated())
                     {
@@ -66,10 +63,7 @@ public class PlayerController : MonoBehaviour
                         }
                         StartCoroutine(MoveCharacter(newLocation));
                     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+
                 }
 
                 KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();

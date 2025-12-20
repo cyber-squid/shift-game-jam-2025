@@ -43,7 +43,22 @@ public class PlayerController : MonoBehaviour
                 {
                     StopAllCoroutines();
                     if (currentLocation != null) { currentLocation.containsPlayer = false; }
-                    StartCoroutine(MoveCharacter(customer.currentSeat.seatOffset.transform.position, customer));
+
+                    // Safely determine move target: prefer customer's seat offset if available, fallback to seat transform, then to customer transform
+                    Vector3 targetPos;
+                    if (customer.currentSeat != null)
+                    {
+                        if (customer.currentSeat.seatOffset != null)
+                            targetPos = customer.currentSeat.seatOffset.position;
+                        else
+                            targetPos = customer.currentSeat.transform.position;
+                    }
+                    else
+                    {
+                        targetPos = customer.transform.position;
+                    }
+
+                    StartCoroutine(MoveCharacter(targetPos, customer));
                 }
             }
         }

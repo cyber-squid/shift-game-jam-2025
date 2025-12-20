@@ -30,6 +30,22 @@ public class Location : MonoBehaviour
 
         if (isStaticInstance) {instance = this;}
 
+        // Ensure offsets have safe fallbacks so missing inspector assignments don't crash runtime
+        if (seatOffset == null)
+        {
+            // fallback to the location's own transform
+            seatOffset = this.transform;
+        }
+
+        if (foodPlateOffset == null)
+        {
+            // create a child transform to act as a food plate offset (local zero)
+            GameObject plate = new GameObject("FoodPlateOffset");
+            plate.transform.SetParent(this.transform, false);
+            plate.transform.localPosition = Vector3.zero;
+            foodPlateOffset = plate.transform;
+        }
+
     }
 
     void SetContainState(Customer customer, bool doesContainACustomer)

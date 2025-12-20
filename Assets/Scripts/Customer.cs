@@ -17,17 +17,31 @@ public class Customer : MonoBehaviour
 
     CustomerState state;
 
-    float patienceLeft;
-    float totalPatience = 10;
+    [SerializeField] float patienceLeft;
+    float totalPatience = 20;
 
-    float mealSelectionTime = 2.5f;
-    float mealEatingTime = 5;
+    float mealSelectionTime = 7f;
+    float mealEatingTime = 15;
+
+
+
+    float moveSpeed = 0.1f;
 
     bool isInteractable = false;
+    Location currentSeat;
+    Food chosenFood;
+
+
+    [SerializeField] GameObject thoughtBubble;
+    [SerializeField] SpriteRenderer foodImage;
+
 
     private void Awake()
     {
         patienceLeft = totalPatience;
+        state = new CustomerState();
+        state = CustomerState.WaitToBeSeated;
+        isInteractable=true;
     }
 
     private void Update()
@@ -36,11 +50,13 @@ public class Customer : MonoBehaviour
 
         if (patienceLeft <= 0)
         {
+            if (currentSeat != null) {currentSeat.containsCustomer = false;}
+            StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
             // leave the restaurant angry. add loss points and clear customer data from the location
         }
     }
 
-
+    
     private void UpdateAction(CustomerState state) 
     { 
         if (state == CustomerState.WaitToBeSeated)
@@ -50,15 +66,14 @@ public class Customer : MonoBehaviour
                 patienceLeft -= Time.deltaTime;
 
                 // if interacted with
+                if (Input.GetKeyDown(KeyCode.Space))
                 {
-                    //calculate free seats
-
-                    // if there are seats free
+                    Location seat = Location.instance.CalculateFreeSeat();
+                    patienceLeft += 999; 
+                    
+                    if (seat == true)
                     {
-                        // select a free seat and move to it
-                        // after finishing move, register the seat as their new interaction location
-                        // update status to selectmeal
-                        isInteractable = false;
+                        StartCoroutine(MoveCharacter(seat));
                     }
                 }
             }
@@ -70,7 +85,10 @@ public class Customer : MonoBehaviour
 
             if (mealSelectionTime <= 0) 
             {
-                // pick random food and set "thought bubble" for the customer active, and set the food image in the bubble to the chosen random food.
+                chosenFood = GameManager.Instance.SelectFood();
+                foodImage.sprite = chosenFood.foodPicture;
+                thoughtBubble.SetActive(true);
+
                 UpdateState(CustomerState.WaitForOrderTaken);
                 isInteractable = true;
             }
@@ -81,9 +99,10 @@ public class Customer : MonoBehaviour
             patienceLeft -= Time.deltaTime;
 
             // if interacted with
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                // set kitchen to spawn the corresponding food item
-                //update status to waitforfood
+                Kitchen.AddOrderToQueue(chosenFood);
+                UpdateState(CustomerState.WaitForFood);
             }
         }
 
@@ -96,7 +115,8 @@ public class Customer : MonoBehaviour
                 // if you are holding the right food
                 {
                     // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
-                    //update status to eatfood
+                    UpdateState(CustomerState.EatFood);
+                    thoughtBubble.SetActive(false);
                     isInteractable = false;
                 }
             }
@@ -110,6 +130,7 @@ public class Customer : MonoBehaviour
 
             if(mealEatingTime <= 0)
             {
+                currentSeat.containsCustomer = false;
                 // leave the restaurant happy. clear customer data from the location
             }
         }
@@ -124,6 +145,30 @@ public class Customer : MonoBehaviour
             patienceLeft = totalPatience * 2;
         else
             patienceLeft = totalPatience;
+    }
+
+
+    public IEnumerator MoveCharacter(Location locationToMoveTo)
+    {
+        this.transform.position = Vector2.MoveTowards(this.transform.position, locationToMoveTo.transform.position, moveSpeed / 3);
+        yield return null;
+
+        if (Vector2.Distance(this.transform.position, locationToMoveTo.transform.position) < 0.05f)
+        {
+            currentSeat = locationToMoveTo;
+            currentSeat.containsCustomer = true;
+
+            if (state == CustomerState.WaitToBeSeated)
+            {
+                // after finishing move, register the seat as their new interaction location
+                UpdateState(CustomerState.SelectMeal);
+                isInteractable = false;
+            }
+
+            yield break;
+        }
+
+        StartCoroutine(MoveCharacter(locationToMoveTo));
     }
 
 }

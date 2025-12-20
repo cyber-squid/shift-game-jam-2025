@@ -7,5 +7,5 @@ using UnityEngine.UI;
 public class Food : ScriptableObject
 {
     int foodID;
-    Image foodPicture;
+    public Sprite foodPicture;
 }

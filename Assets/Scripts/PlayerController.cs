@@ -1,17 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
     public static PlayerController instance;
     Food[] foodsThatCanBeCarried = new Food[2];
+    Location currentLocation;
 
     [SerializeField] float moveSpeed = 1f;
 
     private void Start()
     {
-        ///sefsgfgsfg
         instance = this;
     }
     void Update()
@@ -27,7 +28,14 @@ public class PlayerController : MonoBehaviour
                 if (newLocation)
                 {
                     StopAllCoroutines();
+                    currentLocation.containsPlayer = false;
                     StartCoroutine(MoveCharacter(newLocation));
+                }
+
+                KitchenFoodSlot kitchenFood = new KitchenFoodSlot();
+                if (kitchenFood)
+                {
+                    TryPickUpFood(kitchenFood);
                 }
             }
         }
@@ -40,11 +48,28 @@ public class PlayerController : MonoBehaviour
 
         if (Vector2.Distance(this.transform.position, locationToMoveTo.transform.position) < 0.05f)
         {
-
+            currentLocation = locationToMoveTo;
+            currentLocation.containsPlayer = true;
             yield break;
         }
 
         StartCoroutine(MoveCharacter(locationToMoveTo));
+    }
+
+
+    void TryPickUpFood(KitchenFoodSlot kitchenFood)
+    {
+        if (currentLocation.isKitchenBar)
+        {
+            for (int i = 0; i < foodsThatCanBeCarried.Length; i++)
+            {
+                if (foodsThatCanBeCarried[i] == null)
+                {
+                    foodsThatCanBeCarried[i] = kitchenFood.storedFood;
+                    kitchenFood.storedFood = null;
+                }
+            }
+        }
     }
 }
 

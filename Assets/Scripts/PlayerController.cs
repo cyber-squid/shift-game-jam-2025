@@ -63,7 +63,6 @@ public class PlayerController : MonoBehaviour
                         }
                         StartCoroutine(MoveCharacter(newLocation));
                     }
-
                 }
 
                 KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();

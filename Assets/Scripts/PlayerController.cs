@@ -46,7 +46,9 @@ public class PlayerController : MonoBehaviour
 
                     // Safely determine move target: prefer customer's seat offset if available, fallback to seat transform, then to customer transform
                     Vector3 targetPos;
-                    if (customer.currentSeat != null)
+                    // If the customer is seated at an actual customer seat, move to the seat offset.
+                    // Otherwise move directly to the customer's current transform (e.g. queue position).
+                    if (customer.IsSeated() && customer.currentSeat != null)
                     {
                         if (customer.currentSeat.seatOffset != null)
                             targetPos = customer.currentSeat.seatOffset.position;

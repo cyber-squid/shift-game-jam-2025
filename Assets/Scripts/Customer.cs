@@ -32,6 +32,11 @@ public class Customer : MonoBehaviour
     public Location currentSeat;
     Food chosenFood;
 
+    public bool IsSeated()
+    {
+        return currentSeat != null && currentSeat.IsCustomerSeat();
+    }
+
 
     [SerializeField] GameObject thoughtBubble;
     [SerializeField] SpriteRenderer foodImage;

@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Location : MonoBehaviour
@@ -13,9 +12,12 @@ public class Location : MonoBehaviour
     public bool containsCustomer;
     public bool containsPlayer;
 
-    [SerializeField] public bool isACustomerSeat;
+    [SerializeField] bool isACustomerSeat;
     public bool isKitchenBar;
     [SerializeField] bool isStaticInstance;
+
+    public Transform seatOffset;  // used for player moving to customers 
+    public Transform foodPlateOffset;
 
     private void Awake()
     {
@@ -27,6 +29,7 @@ public class Location : MonoBehaviour
         }
 
         if (isStaticInstance) {instance = this;}
+
     }
 
     void SetContainState(Customer customer, bool doesContainACustomer)
@@ -53,7 +56,7 @@ public class Location : MonoBehaviour
 
         if (freeSeats.Count > 0)
         {
-            return freeSeats[Random.Range(0, freeSeats.Count)];
+            return freeSeats[Random.Range(0, freeSeats.Count - 1)];
         }
         else return null;
     }

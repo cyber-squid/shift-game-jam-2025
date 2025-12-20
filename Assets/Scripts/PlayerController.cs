@@ -1,14 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
     public static PlayerController instance;
-    Food[] foodsThatCanBeCarried = new Food[2];
+    [SerializeField] public KitchenFoodSlot[] foodsThatCanBeCarried;
     Location currentLocation;
-    Customer selectedCustomer;
 
     [SerializeField] float moveSpeed = 1f;
 
@@ -21,84 +19,36 @@ public class PlayerController : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             print("mouse down");
-            if (Camera.main == null) return;
             RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
             if (hit.collider != null)
             {
                 print("object: " + hit.collider.name);
                 Location newLocation = hit.collider.GetComponent<Location>();
-                if (newLocation != null)
+                if (newLocation)
                 {
-                    // If a customer is selected, seat them at the clicked free seat and move the player there too
-                    if (selectedCustomer != null && !newLocation.containsCustomer && !selectedCustomer.IsSeated())
-                    {
-                        // move customer
-                        selectedCustomer.StopAllCoroutines();
-                        selectedCustomer.StartCoroutine(selectedCustomer.MoveCharacter(newLocation));
-                        // move player to same location
-                        StopAllCoroutines();
-                        if (currentLocation != null)
-                        {
-                            currentLocation.containsPlayer = false;
-                        }
-                        StartCoroutine(MoveCharacter(newLocation));
-                        // clear selection and hide highlight
-                        selectedCustomer.Deselect();
-                        selectedCustomer = null;
-                    }
-                    else
-                    {
-                        StopAllCoroutines();
-                        if (currentLocation != null)
-                        {
-                            currentLocation.containsPlayer = false;
-                        }
-                        StartCoroutine(MoveCharacter(newLocation));
-                    }
+                    StopAllCoroutines();
+                    if (currentLocation != null) { currentLocation.containsPlayer = false; }
+                    StartCoroutine(MoveCharacter(newLocation));
                 }
 
                 KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();
-                if (kitchenFood != null)
+                if (kitchenFood)
                 {
+                    print("gettiong food");
                     TryPickUpFood(kitchenFood);
                 }
 
-                Customer clickedCustomer = hit.collider.GetComponent<Customer>();
-                if (clickedCustomer != null)
+                Customer customer = hit.collider.GetComponent<Customer>();
+                if (customer)
                 {
-                    // deselect previous selection
-                    if (selectedCustomer != null && selectedCustomer != clickedCustomer)
-                    {
-                        selectedCustomer.Deselect();
-                        selectedCustomer = null;
-                    }
-
-                    // If customer is already seated, don't select them for seating; just move player to them
-                    if (clickedCustomer.IsSeated())
-                    {
-                        StopAllCoroutines();
-                        if (currentLocation != null)
-                        {
-                            currentLocation.containsPlayer = false;
-                        }
-                        StartCoroutine(MoveCharacter(clickedCustomer.transform.position));
-                    }
-                    else
-                    {
-                        // select the customer so the next location click will seat them
-                        selectedCustomer = clickedCustomer;
-                        selectedCustomer.Select();
-                        StopAllCoroutines();
-                        if (currentLocation != null)
-                        {
-                            currentLocation.containsPlayer = false;
-                        }
-                        StartCoroutine(MoveCharacter(clickedCustomer.transform.position));
-                    }
+                    StopAllCoroutines();
+                    if (currentLocation != null) { currentLocation.containsPlayer = false; }
+                    StartCoroutine(MoveCharacter(customer.currentSeat.seatOffset.transform.position, customer));
                 }
             }
         }
     }
+
 
     public IEnumerator MoveCharacter(Location locationToMoveTo)
     {
@@ -115,32 +65,42 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(MoveCharacter(locationToMoveTo));
     }
 
-    public IEnumerator MoveCharacter(Vector3 positionToMoveTo)
+    public IEnumerator MoveCharacter(Vector3 spotToMoveTo, Customer customer)
     {
-        this.transform.position = Vector2.MoveTowards(this.transform.position, positionToMoveTo, moveSpeed / 3);
+        this.transform.position = Vector2.MoveTowards(this.transform.position, spotToMoveTo, moveSpeed / 3);
         yield return null;
 
-        if (Vector2.Distance(this.transform.position, positionToMoveTo) < 0.05f)
+        if (Vector2.Distance(this.transform.position, spotToMoveTo) < 0.05f)
         {
-            // not a Location-based move, so clear currentLocation
-            currentLocation = null;
+            currentLocation = customer.currentSeat;
+            currentLocation.containsPlayer = true;
+            customer.OnInteract();
             yield break;
         }
 
-        StartCoroutine(MoveCharacter(positionToMoveTo));
+        StartCoroutine(MoveCharacter(spotToMoveTo, customer));
     }
 
 
-    void TryPickUpFood(KitchenFoodSlot kitchenFood)
+    void TryPickUpFood(KitchenFoodSlot kitchenFoodSlot)
     {
-        if (currentLocation != null && currentLocation.isKitchenBar)
+        if (currentLocation.isKitchenBar)
         {
-            for (int i = 0; i < foodsThatCanBeCarried.Length; i++)
+            if (kitchenFoodSlot.storedFood != null)
             {
-                if (foodsThatCanBeCarried[i] == null)
+                for (int i = 0; i < foodsThatCanBeCarried.Length; i++)
                 {
-                    foodsThatCanBeCarried[i] = kitchenFood.storedFood;
-                    kitchenFood.storedFood = null;
+
+                    if (foodsThatCanBeCarried[i].storedFood == null)
+                    {
+
+                        print("got foods");
+                        foodsThatCanBeCarried[i].storedFood = kitchenFoodSlot.storedFood;
+                        foodsThatCanBeCarried[i].storedFoodSprite.sprite = foodsThatCanBeCarried[i].storedFood.foodPicture;
+
+                        Kitchen.ClearSlot(kitchenFoodSlot);
+                        break;
+                    }
                 }
             }
         }

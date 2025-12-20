@@ -63,6 +63,7 @@ public class CustomerSpawner : MonoBehaviour
 
         int toSpawn = spawnPairs ? Mathf.Min(pairSize, allowed) : 1;
 
+        List<Customer> spawned = new List<Customer>();
         for (int i = 0; i < toSpawn; i++)
         {
             float offset = 0f;
@@ -90,6 +91,26 @@ public class CustomerSpawner : MonoBehaviour
             else
             {
                 go = Instantiate(customerPrefab, spawnPos, Quaternion.identity);
+            }
+
+            var cust = go.GetComponent<Customer>();
+            if (cust != null)
+            {
+                // ensure selection indicator is hidden initially
+                cust.Deselect();
+                spawned.Add(cust);
+            }
+        }
+
+        // Link spawned customers into pairs/groups so clicking one can target the group
+        if (spawned.Count > 1)
+        {
+            for (int i = 0; i < spawned.Count - 1; i += 2)
+            {
+                var a = spawned[i];
+                var b = spawned[i + 1];
+                a.pairedCustomer = b;
+                b.pairedCustomer = a;
             }
         }
     }

@@ -25,6 +25,18 @@ public class Location : MonoBehaviour
     public Transform seatOffset;  // used for player moving to customers 
     public Transform foodPlateOffset;
 
+    [Tooltip("Vertical spacing (in world units) between grouped seats")]
+    public float seatPairSpacing = 0.6f;
+
+    public Vector3 GetGroupedSeatPosition(int index, int total)
+    {
+        Vector3 basePos = (seatOffset != null) ? seatOffset.position : this.transform.position;
+        if (total <= 1) return basePos;
+        float start = -((total - 1) * seatPairSpacing) / 2f;
+        float offset = start + index * seatPairSpacing;
+        return basePos + new Vector3(0f, offset, 0f);
+    }
+
     private void Awake()
     {
         if (allSeatingLocations == null) { allSeatingLocations = new List<Location>(); }
@@ -62,7 +74,7 @@ public class Location : MonoBehaviour
 
         if (freeSeats.Count > 0)
         {
-            return freeSeats[Random.Range(0, freeSeats.Count - 1)];
+            return freeSeats[Random.Range(0, freeSeats.Count)];
         }
         else return null;
     }

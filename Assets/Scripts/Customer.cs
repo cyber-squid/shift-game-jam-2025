@@ -30,7 +30,20 @@ public class Customer : MonoBehaviour
     bool isInteractable = false;
     bool wasInteractedWith = false;
     public Location currentSeat;
+    public Customer pairedCustomer;
     Food chosenFood;
+
+    [SerializeField] GameObject selectionIndicator;
+
+    public void Select()
+    {
+        if (selectionIndicator != null) selectionIndicator.SetActive(true);
+    }
+
+    public void Deselect()
+    {
+        if (selectionIndicator != null) selectionIndicator.SetActive(false);
+    }
 
     public bool IsSeated()
     {
@@ -252,6 +265,29 @@ public class Customer : MonoBehaviour
         }
 
         StartCoroutine(MoveCharacter(locationToMoveTo));
+    }
+
+    // Move to a specific point (used for group seating offsets)
+    public IEnumerator MoveCharacter(Location locationToMoveTo, Vector3 targetPosition)
+    {
+        this.transform.position = Vector2.MoveTowards(this.transform.position, targetPosition, moveSpeed / 3);
+        yield return null;
+
+        if (Vector2.Distance(this.transform.position, targetPosition) < 0.05f)
+        {
+            currentSeat = locationToMoveTo;
+            if (currentSeat != null) currentSeat.containsCustomer = true;
+
+            if (state == CustomerState.WaitToBeSeated)
+            {
+                UpdateState(CustomerState.SelectMeal);
+                isInteractable = false;
+            }
+
+            yield break;
+        }
+
+        StartCoroutine(MoveCharacter(locationToMoveTo, targetPosition));
     }
 
 

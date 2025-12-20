@@ -8,6 +8,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] public KitchenFoodSlot[] foodsThatCanBeCarried;
     Location currentLocation;
 
+    // selection can include groups (pairs) of customers
+    List<Customer> selectedCustomers = new List<Customer>();
+
     [SerializeField] float moveSpeed = 1f;
 
     private void Start()
@@ -26,9 +29,40 @@ public class PlayerController : MonoBehaviour
                 Location newLocation = hit.collider.GetComponent<Location>();
                 if (newLocation)
                 {
-                    StopAllCoroutines();
-                    if (currentLocation != null) { currentLocation.containsPlayer = false; }
-                    StartCoroutine(MoveCharacter(newLocation));
+                    // If customers are selected for group seating, seat them at the clicked free seat
+                    if (selectedCustomers != null && selectedCustomers.Count > 0 && newLocation.isACustomerSeat && !newLocation.containsCustomer)
+                    {
+                        // mark location as containing customers immediately to avoid races
+                        newLocation.containsCustomer = true;
+
+                        // move each selected customer to their grouped offset
+                        for (int i = 0; i < selectedCustomers.Count; i++)
+                        {
+                            var cust = selectedCustomers[i];
+                            if (cust == null) continue;
+
+                            // compute grouped offset for each customer
+                            Vector3 seatPos = newLocation.GetGroupedSeatPosition(i, selectedCustomers.Count);
+
+                            cust.StopAllCoroutines();
+                            cust.StartCoroutine(cust.MoveCharacter(newLocation, seatPos));
+                        }
+
+                        // move player to the table as well
+                        StopAllCoroutines();
+                        if (currentLocation != null) { currentLocation.containsPlayer = false; }
+                        StartCoroutine(MoveCharacter(newLocation));
+
+                        // clear selection
+                        foreach (var c in selectedCustomers) if (c != null) c.Deselect();
+                        selectedCustomers.Clear();
+                    }
+                    else
+                    {
+                        StopAllCoroutines();
+                        if (currentLocation != null) { currentLocation.containsPlayer = false; }
+                        StartCoroutine(MoveCharacter(newLocation));
+                    }
                 }
 
                 KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();
@@ -44,23 +78,36 @@ public class PlayerController : MonoBehaviour
                     StopAllCoroutines();
                     if (currentLocation != null) { currentLocation.containsPlayer = false; }
 
-                    // Safely determine move target: prefer customer's seat offset if available, fallback to seat transform, then to customer transform
-                    Vector3 targetPos;
-                    // If the customer is seated at an actual customer seat, move to the seat offset.
-                    // Otherwise move directly to the customer's current transform (e.g. queue position).
+                    // If the customer is seated at an actual customer seat, move directly to the seat offset
                     if (customer.IsSeated() && customer.currentSeat != null)
                     {
-                        if (customer.currentSeat.seatOffset != null)
-                            targetPos = customer.currentSeat.seatOffset.position;
-                        else
-                            targetPos = customer.currentSeat.transform.position;
-                    }
-                    else
-                    {
-                        targetPos = customer.transform.position;
+                        Vector3 targetPos = (customer.currentSeat.seatOffset != null) ? customer.currentSeat.seatOffset.position : customer.currentSeat.transform.position;
+                        StartCoroutine(MoveCharacter(targetPos, customer));
+                        // don't change selection when clicking a seated customer
+                        return;
                     }
 
-                    StartCoroutine(MoveCharacter(targetPos, customer));
+                    // SELECT A GROUP: deselect previous
+                    foreach (var c in selectedCustomers) if (c != null) c.Deselect();
+                    selectedCustomers.Clear();
+
+                    // Add clicked customer (if not already seated)
+                    if (!customer.IsSeated())
+                    {
+                        selectedCustomers.Add(customer);
+
+                        // If they have a paired sibling that's not seated, add them too
+                        if (customer.pairedCustomer != null && !customer.pairedCustomer.IsSeated())
+                        {
+                            selectedCustomers.Add(customer.pairedCustomer);
+                        }
+
+                        // Show selection indicators
+                        foreach (var c in selectedCustomers) if (c != null) c.Select();
+
+                        // Move player to the clicked customer's position (the queue position)
+                        StartCoroutine(MoveCharacter(customer.transform.position, customer));
+                    }
                 }
             }
         }

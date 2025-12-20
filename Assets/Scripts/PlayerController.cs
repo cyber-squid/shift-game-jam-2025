@@ -30,7 +30,7 @@ public class PlayerController : MonoBehaviour
                 if (newLocation)
                 {
                     // If customers are selected for group seating, seat them at the clicked free seat
-                    if (selectedCustomers != null && selectedCustomers.Count > 0 && newLocation.isACustomerSeat && !newLocation.containsCustomer)
+                    if (selectedCustomers != null && selectedCustomers.Count > 0 && newLocation.IsCustomerSeat() && !newLocation.containsCustomer)
                     {
                         // mark location as containing customers immediately to avoid races
                         newLocation.containsCustomer = true;

@@ -40,11 +40,19 @@ public class Customer : MonoBehaviour
     private void Awake()
     {
         patienceLeft = totalPatience;
-        state = new CustomerState();
         state = CustomerState.WaitToBeSeated;
         isInteractable = true;
-        currentSeat = GameManager.Instance.startingLocation;
-        GameManager.Instance.startingLocation.containsCustomer = true;
+
+        // Try to set a starting seat if GameManager provides one; guard against missing GameManager
+        if (GameManager.Instance != null && GameManager.Instance.startingLocation != null)
+        {
+            currentSeat = GameManager.Instance.startingLocation;
+            GameManager.Instance.startingLocation.containsCustomer = true;
+        }
+        else
+        {
+            currentSeat = null;
+        }
     }
 
     private void Update()
@@ -71,13 +79,18 @@ public class Customer : MonoBehaviour
                 // if interacted with
                 if (wasInteractedWith)
                 {
-                    Location seat = Location.instance.CalculateFreeSeat();
+                    Location seat = null;
+                    if (Location.instance != null)
+                        seat = Location.instance.CalculateFreeSeat();
 
-                    if (seat == true)
+                    if (seat != null)
                     {
                         isInteractable = false;
                         patienceLeft += 999;
-                        currentSeat.containsCustomer = false;
+                        if (currentSeat != null)
+                        {
+                            currentSeat.containsCustomer = false;
+                        }
                         StartCoroutine(MoveCharacter(seat));
                     }
 
@@ -94,9 +107,20 @@ public class Customer : MonoBehaviour
 
             if (mealSelectionTime <= 0)
             {
-                chosenFood = GameManager.Instance.SelectFood();
-                foodImage.sprite = chosenFood.foodPicture;
-                thoughtBubble.SetActive(true);
+                if (GameManager.Instance != null)
+                {
+                    chosenFood = GameManager.Instance.SelectFood();
+                }
+
+                if (chosenFood != null && foodImage != null)
+                {
+                    foodImage.sprite = chosenFood.foodPicture;
+                }
+
+                if (thoughtBubble != null)
+                {
+                    thoughtBubble.SetActive(true);
+                }
 
                 UpdateState(CustomerState.WaitForOrderTaken);
                 isInteractable = true;
@@ -112,8 +136,11 @@ public class Customer : MonoBehaviour
             // if interacted with
             if (wasInteractedWith)
             {
-                Kitchen.AddOrderToQueue(chosenFood);
-                UpdateState(CustomerState.WaitForFood);
+                if (chosenFood != null)
+                {
+                    Kitchen.AddOrderToQueue(chosenFood);
+                    UpdateState(CustomerState.WaitForFood);
+                }
 
                 wasInteractedWith = false;
             }
@@ -127,25 +154,37 @@ public class Customer : MonoBehaviour
 
             if (wasInteractedWith)
             {
-                for (int i = 0; i < PlayerController.instance.foodsThatCanBeCarried.Length; i++)
+                if (PlayerController.instance != null && PlayerController.instance.foodsThatCanBeCarried != null)
                 {
-                    if (PlayerController.instance.foodsThatCanBeCarried[i].storedFood != null)
+                    for (int i = 0; i < PlayerController.instance.foodsThatCanBeCarried.Length; i++)
                     {
-                        if (PlayerController.instance.foodsThatCanBeCarried[i].storedFood == chosenFood)
+                        var slot = PlayerController.instance.foodsThatCanBeCarried[i];
+                        if (slot != null && slot.storedFood != null && chosenFood != null)
                         {
-                            // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
+                            if (slot.storedFood == chosenFood)
+                            {
+                                // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
+                                if (thoughtBubble != null)
+                                    thoughtBubble.SetActive(true);
 
-                            thoughtBubble.SetActive(true);
-                            thoughtBubble.GetComponent<SpriteRenderer>().sprite = null;
-                            foodImage.transform.position = currentSeat.foodPlateOffset.position;
+                                var sr = thoughtBubble != null ? thoughtBubble.GetComponent<SpriteRenderer>() : null;
+                                if (sr != null) sr.sprite = null;
 
-                            PlayerController.instance.foodsThatCanBeCarried[i].storedFoodSprite.sprite = null;
-                            PlayerController.instance.foodsThatCanBeCarried[i].storedFood = null; 
+                                if (currentSeat != null && currentSeat.foodPlateOffset != null && foodImage != null)
+                                {
+                                    foodImage.transform.position = currentSeat.foodPlateOffset.position;
+                                }
 
-                            UpdateState(CustomerState.EatFood);
-                            isInteractable = false;
+                                if (slot.storedFoodSprite != null)
+                                    slot.storedFoodSprite.sprite = null;
 
-                            break;
+                                slot.storedFood = null;
+
+                                UpdateState(CustomerState.EatFood);
+                                isInteractable = false;
+
+                                break;
+                            }
                         }
                     }
                 }
@@ -164,9 +203,12 @@ public class Customer : MonoBehaviour
 
             if (mealEatingTime <= 0)
             {
-                thoughtBubble.SetActive(false);
-                currentSeat.containsCustomer = false;
-                StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
+                if (thoughtBubble != null) thoughtBubble.SetActive(false);
+                if (currentSeat != null) currentSeat.containsCustomer = false;
+                if (GameManager.Instance != null && GameManager.Instance.exitLocation != null)
+                {
+                    StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
+                }
                 // leave the restaurant happy. clear customer data from the location
             }
         }

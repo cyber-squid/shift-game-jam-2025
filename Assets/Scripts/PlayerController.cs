@@ -29,14 +29,6 @@ public class PlayerController : MonoBehaviour
                 Location newLocation = hit.collider.GetComponent<Location>();
                 if (newLocation != null)
                 {
-
-                    StopAllCoroutines();
-                    if (currentLocation != null)
-                    {
-                        currentLocation.containsPlayer = false;
-                    }
-                    StartCoroutine(MoveCharacter(newLocation));
-
                     // If a customer is selected, seat them at the clicked free seat and move the player there too
                     if (selectedCustomer != null && !newLocation.containsCustomer && !selectedCustomer.IsSeated())
                     {

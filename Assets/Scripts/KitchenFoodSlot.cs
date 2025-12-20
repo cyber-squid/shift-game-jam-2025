@@ -5,4 +5,5 @@ using UnityEngine;
 public class KitchenFoodSlot : MonoBehaviour
 {
     public Food storedFood;
+    public SpriteRenderer storedFoodSprite;
 }

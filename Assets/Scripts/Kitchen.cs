@@ -14,7 +14,8 @@ public class Kitchen : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+        foodQueue = new Queue<Food>();
+        timeToNextFoodAppearing = foodTimer;
     }
 
     // Update is called once per frame
@@ -30,8 +31,11 @@ public class Kitchen : MonoBehaviour
                 {
                     if (slots[i].storedFood == null) 
                     { 
-                        slots[i].storedFood = foodQueue.Dequeue();
+                        slots[i].storedFood = foodQueue.Peek();
+                        slots[i].storedFoodSprite.sprite = slots[i].storedFood.foodPicture;
+                        foodQueue.Dequeue();
                         timeToNextFoodAppearing = foodTimer;
+                        break;
                     }
                 }
             }
@@ -41,5 +45,11 @@ public class Kitchen : MonoBehaviour
     public static void AddOrderToQueue(Food foodToAdd)
     {
         foodQueue.Enqueue(foodToAdd);
+    }
+
+    public static void ClearSlot(KitchenFoodSlot foodToRemove)
+    {
+        foodToRemove.storedFoodSprite.sprite = null;
+        foodToRemove.storedFood = null;
     }
 }

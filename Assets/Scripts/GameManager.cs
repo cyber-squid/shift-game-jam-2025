@@ -8,6 +8,7 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] Food[] allFoods;
     public Location exitLocation;
+    public Location startingLocation;
 
     private void Awake()
     {

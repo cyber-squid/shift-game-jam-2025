@@ -1,12 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
     public static PlayerController instance;
-    Food[] foodsThatCanBeCarried = new Food[2];
+    [SerializeField] public KitchenFoodSlot[] foodsThatCanBeCarried;
     Location currentLocation;
 
     [SerializeField] float moveSpeed = 1f;
@@ -28,18 +27,28 @@ public class PlayerController : MonoBehaviour
                 if (newLocation)
                 {
                     StopAllCoroutines();
-                    currentLocation.containsPlayer = false;
+                    if (currentLocation != null) { currentLocation.containsPlayer = false; }
                     StartCoroutine(MoveCharacter(newLocation));
                 }
 
-                KitchenFoodSlot kitchenFood = new KitchenFoodSlot();
+                KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();
                 if (kitchenFood)
                 {
+                    print("gettiong food");
                     TryPickUpFood(kitchenFood);
+                }
+
+                Customer customer = hit.collider.GetComponent<Customer>();
+                if (customer)
+                {
+                    StopAllCoroutines();
+                    if (currentLocation != null) { currentLocation.containsPlayer = false; }
+                    StartCoroutine(MoveCharacter(customer.currentSeat.seatOffset.transform.position, customer));
                 }
             }
         }
     }
+
 
     public IEnumerator MoveCharacter(Location locationToMoveTo)
     {
@@ -56,17 +65,42 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(MoveCharacter(locationToMoveTo));
     }
 
+    public IEnumerator MoveCharacter(Vector3 spotToMoveTo, Customer customer)
+    {
+        this.transform.position = Vector2.MoveTowards(this.transform.position, spotToMoveTo, moveSpeed / 3);
+        yield return null;
 
-    void TryPickUpFood(KitchenFoodSlot kitchenFood)
+        if (Vector2.Distance(this.transform.position, spotToMoveTo) < 0.05f)
+        {
+            currentLocation = customer.currentSeat;
+            currentLocation.containsPlayer = true;
+            customer.OnInteract();
+            yield break;
+        }
+
+        StartCoroutine(MoveCharacter(spotToMoveTo, customer));
+    }
+
+
+    void TryPickUpFood(KitchenFoodSlot kitchenFoodSlot)
     {
         if (currentLocation.isKitchenBar)
         {
-            for (int i = 0; i < foodsThatCanBeCarried.Length; i++)
+            if (kitchenFoodSlot.storedFood != null)
             {
-                if (foodsThatCanBeCarried[i] == null)
+                for (int i = 0; i < foodsThatCanBeCarried.Length; i++)
                 {
-                    foodsThatCanBeCarried[i] = kitchenFood.storedFood;
-                    kitchenFood.storedFood = null;
+
+                    if (foodsThatCanBeCarried[i].storedFood == null)
+                    {
+
+                        print("got foods");
+                        foodsThatCanBeCarried[i].storedFood = kitchenFoodSlot.storedFood;
+                        foodsThatCanBeCarried[i].storedFoodSprite.sprite = foodsThatCanBeCarried[i].storedFood.foodPicture;
+
+                        Kitchen.ClearSlot(kitchenFoodSlot);
+                        break;
+                    }
                 }
             }
         }

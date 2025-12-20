@@ -28,7 +28,8 @@ public class Customer : MonoBehaviour
     float moveSpeed = 0.1f;
 
     bool isInteractable = false;
-    Location currentSeat;
+    bool wasInteractedWith = false;
+    public Location currentSeat;
     Food chosenFood;
 
 
@@ -41,7 +42,9 @@ public class Customer : MonoBehaviour
         patienceLeft = totalPatience;
         state = new CustomerState();
         state = CustomerState.WaitToBeSeated;
-        isInteractable=true;
+        isInteractable = true;
+        currentSeat = GameManager.Instance.startingLocation;
+        GameManager.Instance.startingLocation.containsCustomer = true;
     }
 
     private void Update()
@@ -50,40 +53,46 @@ public class Customer : MonoBehaviour
 
         if (patienceLeft <= 0)
         {
-            if (currentSeat != null) {currentSeat.containsCustomer = false;}
+            if (currentSeat != null) { currentSeat.containsCustomer = false; }
             StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
             // leave the restaurant angry. add loss points and clear customer data from the location
         }
     }
 
-    
-    private void UpdateAction(CustomerState state) 
-    { 
+
+    private void UpdateAction(CustomerState state)
+    {
         if (state == CustomerState.WaitToBeSeated)
         {
-            if (isInteractable) 
+            if (isInteractable)
             {
                 patienceLeft -= Time.deltaTime;
 
                 // if interacted with
-                if (Input.GetKeyDown(KeyCode.Space))
+                if (wasInteractedWith)
                 {
                     Location seat = Location.instance.CalculateFreeSeat();
-                    patienceLeft += 999; 
-                    
+
                     if (seat == true)
                     {
+                        isInteractable = false;
+                        patienceLeft += 999;
+                        currentSeat.containsCustomer = false;
                         StartCoroutine(MoveCharacter(seat));
                     }
+
+                    wasInteractedWith = false;
                 }
             }
         }
+
+
 
         if (state == CustomerState.SelectMeal)
         {
             mealSelectionTime -= Time.deltaTime;
 
-            if (mealSelectionTime <= 0) 
+            if (mealSelectionTime <= 0)
             {
                 chosenFood = GameManager.Instance.SelectFood();
                 foodImage.sprite = chosenFood.foodPicture;
@@ -94,43 +103,70 @@ public class Customer : MonoBehaviour
             }
         }
 
+
+
         if (state == CustomerState.WaitForOrderTaken)
         {
             patienceLeft -= Time.deltaTime;
 
             // if interacted with
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (wasInteractedWith)
             {
                 Kitchen.AddOrderToQueue(chosenFood);
                 UpdateState(CustomerState.WaitForFood);
+
+                wasInteractedWith = false;
             }
         }
+
+
 
         if (state == CustomerState.WaitForFood)
         {
             patienceLeft -= Time.deltaTime;
 
-            // if interacted with
+            if (wasInteractedWith)
             {
-                // if you are holding the right food
+                for (int i = 0; i < PlayerController.instance.foodsThatCanBeCarried.Length; i++)
                 {
-                    // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
-                    UpdateState(CustomerState.EatFood);
-                    thoughtBubble.SetActive(false);
-                    isInteractable = false;
+                    if (PlayerController.instance.foodsThatCanBeCarried[i].storedFood != null)
+                    {
+                        if (PlayerController.instance.foodsThatCanBeCarried[i].storedFood == chosenFood)
+                        {
+                            // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
+
+                            thoughtBubble.SetActive(true);
+                            thoughtBubble.GetComponent<SpriteRenderer>().sprite = null;
+                            foodImage.transform.position = currentSeat.foodPlateOffset.position;
+
+                            PlayerController.instance.foodsThatCanBeCarried[i].storedFoodSprite.sprite = null;
+                            PlayerController.instance.foodsThatCanBeCarried[i].storedFood = null; 
+
+                            UpdateState(CustomerState.EatFood);
+                            isInteractable = false;
+
+                            break;
+                        }
+                    }
                 }
+
+                wasInteractedWith = false;
             }
         }
 
+
+
         if (state == CustomerState.EatFood)
         {
-            // just play food eating anim
+            // just play food eating anim.
 
             mealEatingTime -= Time.deltaTime;
 
-            if(mealEatingTime <= 0)
+            if (mealEatingTime <= 0)
             {
+                thoughtBubble.SetActive(false);
                 currentSeat.containsCustomer = false;
+                StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
                 // leave the restaurant happy. clear customer data from the location
             }
         }
@@ -171,6 +207,31 @@ public class Customer : MonoBehaviour
         StartCoroutine(MoveCharacter(locationToMoveTo));
     }
 
+
+    public void OnInteract()
+    {
+        switch (state)
+        {
+            case CustomerState.WaitToBeSeated:
+                {
+                    if (isInteractable) { wasInteractedWith = true; }
+                }
+                break;
+            case CustomerState.WaitForOrderTaken:
+                {
+                    wasInteractedWith = true;
+                }
+                break;
+            case CustomerState.WaitForFood:
+                {
+                    wasInteractedWith = true;
+                }
+                break;
+            default:
+                break;
+        }
+
+    }
 }
 
 enum CustomerState

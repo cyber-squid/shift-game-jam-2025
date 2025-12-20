@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Location : MonoBehaviour
@@ -17,6 +16,9 @@ public class Location : MonoBehaviour
     public bool isKitchenBar;
     [SerializeField] bool isStaticInstance;
 
+    public Transform seatOffset;  // used for player moving to customers 
+    public Transform foodPlateOffset;
+
     private void Awake()
     {
         if (allSeatingLocations == null) { allSeatingLocations = new List<Location>(); }
@@ -27,6 +29,7 @@ public class Location : MonoBehaviour
         }
 
         if (isStaticInstance) {instance = this;}
+
     }
 
     void SetContainState(Customer customer, bool doesContainACustomer)

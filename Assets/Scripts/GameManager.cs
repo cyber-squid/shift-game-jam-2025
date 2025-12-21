@@ -16,6 +16,6 @@ public class GameManager : MonoBehaviour
     }
     public Food SelectFood()
     {
-        return allFoods[Random.Range(0, allFoods.Length - 1)];
+        return allFoods[Random.Range(0, allFoods.Length)];
     }
 }

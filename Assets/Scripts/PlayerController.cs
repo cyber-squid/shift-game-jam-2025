@@ -34,6 +34,7 @@ public class PlayerController : MonoBehaviour
                 if (newLocation)
                 {
                     // If customers are selected for group seating, seat them at the clicked free seat
+                    Debug.Log($"Check: Selected={selectedCustomers?.Count}, IsSeat={newLocation.IsCustomerSeat()}, HasCustomer={newLocation.containsCustomer}");
                     if (selectedCustomers != null && selectedCustomers.Count > 0 && newLocation.IsCustomerSeat() && !newLocation.containsCustomer)
                     {
                         // mark location as containing customers immediately to avoid races
@@ -83,6 +84,7 @@ public class PlayerController : MonoBehaviour
                     StopAllCoroutines();
                     if (currentLocation != null) { currentLocation.containsPlayer = false; }
                     StartCoroutine(MoveCharacter(newLocation));
+                    return;
                 }
 
                 KitchenFoodSlot kitchenFood = hit.collider.GetComponent<KitchenFoodSlot>();

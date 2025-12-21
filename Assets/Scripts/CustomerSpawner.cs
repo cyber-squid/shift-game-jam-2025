@@ -15,6 +15,14 @@ public class CustomerSpawner : MonoBehaviour
     public int pairSize = 2;
     public float pairSpacing = 0.6f;
 
+    [Tooltip("Small Z offset per spawned customer so upper/earlier ones render behind")]
+    public float spawnZStep = 0.01f;
+
+    [Tooltip("Base sorting order applied to spawned customers' SpriteRenderers")]
+    public int baseSortingOrder = 0;
+    [Tooltip("Increment in sorting order per stacked customer (higher order renders on top)")]
+    public int sortingOrderStep = 1;
+
     [Header("Pooling (optional)")]
     public bool usePooling = true;
     public int poolSize = 10;
@@ -75,6 +83,8 @@ public class CustomerSpawner : MonoBehaviour
             }
 
             Vector3 spawnPos = basePos + new Vector3(0f, offset, 0f);
+            // apply small Z offset so stacked customers render behind each other
+            spawnPos.z += -i * spawnZStep;
             GameObject go = null;
 
             if (usePooling && pool != null)
@@ -98,6 +108,15 @@ public class CustomerSpawner : MonoBehaviour
             {
                 // ensure selection indicator is hidden initially
                 cust.Deselect();
+
+                // set sprite sorting order so that lower (i==0) renders on top of higher ones
+                var srs = go.GetComponentsInChildren<SpriteRenderer>();
+                int order = baseSortingOrder + ((toSpawn - 1 - i) * sortingOrderStep);
+                foreach (var sr in srs)
+                {
+                    sr.sortingOrder = order;
+                }
+
                 spawned.Add(cust);
             }
         }

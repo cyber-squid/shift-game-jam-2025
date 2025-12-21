@@ -37,29 +37,88 @@ public class Customer : MonoBehaviour
 
     public void Select()
     {
-        if (selectionIndicator != null) selectionIndicator.SetActive(true);
+        // Tint the primary sprite renderer(s) yellow to indicate selection
+        if (_spriteRenderers == null) return;
+        foreach (var sr in _spriteRenderers)
+        {
+            if (sr == null || sr == _thoughtBubbleRenderer || sr == foodImage) continue;
+            sr.color = Color.yellow;
+        }
     }
 
     public void Deselect()
     {
-        if (selectionIndicator != null) selectionIndicator.SetActive(false);
+        // Reset sprite renderer color back to white
+        if (_spriteRenderers == null) return;
+        foreach (var sr in _spriteRenderers)
+        {
+            if (sr == null || sr == _thoughtBubbleRenderer || sr == foodImage) continue;
+            sr.color = Color.white;
+        }
     }
 
     public bool IsSeated()
     {
-        return currentSeat != null && currentSeat.IsCustomerSeat();
+        // Customer is only considered seated if they're at an actual customer seat (not the waiting area)
+        if (currentSeat == null) return false;
+        if (!currentSeat.IsCustomerSeat()) return false;
+        
+        // Exclude the starting location (waiting area)
+        if (GameManager.Instance != null && currentSeat == GameManager.Instance.startingLocation)
+            return false;
+            
+        return true;
+    }
+
+    // Flip or reset the customer's sprite(s) horizontally when they occupy the right seat
+    public void SetFacingRightSeat(bool isRight)
+    {
+        if (_spriteRenderers == null) return;
+        foreach (var sr in _spriteRenderers)
+        {
+            if (sr == null) continue;
+            // don't flip UI or thought bubble sprites
+            if (sr == _thoughtBubbleRenderer || sr == foodImage) continue;
+            sr.flipX = isRight;
+        }
+        
+        // Position thought bubble: left-seated keeps original position, right-seated uses offset
+        if (thoughtBubble != null)
+        {
+            if (isRight && thoughtBubbleOffset != null)
+            {
+                thoughtBubble.transform.position = thoughtBubbleOffset.position;
+            }
+            // else: left-seated customer keeps the thoughtBubble at its original position (no change)
+        }
+    }
+
+    public void HideThoughtBubble()
+    {
+        if (thoughtBubble != null && thoughtBubble.activeSelf)
+        {
+            thoughtBubble.SetActive(false);
+        }
     }
 
 
     [SerializeField] GameObject thoughtBubble;
+    [SerializeField] Transform thoughtBubbleOffset;
     [SerializeField] SpriteRenderer foodImage;
 
+    // cache sprite renderers so we can flip only the visible sprites (safer than scaling)
+    SpriteRenderer[] _spriteRenderers;
+    SpriteRenderer _thoughtBubbleRenderer;
 
     private void Awake()
     {
         patienceLeft = totalPatience;
         state = CustomerState.WaitToBeSeated;
         isInteractable = true;
+
+        // cache sprite renderers and the thought bubble sprite renderer (if present)
+        _spriteRenderers = GetComponentsInChildren<SpriteRenderer>();
+        _thoughtBubbleRenderer = (thoughtBubble != null) ? thoughtBubble.GetComponent<SpriteRenderer>() : null;
 
         // Try to set a starting seat if GameManager provides one; guard against missing GameManager
         if (GameManager.Instance != null && GameManager.Instance.startingLocation != null)
@@ -80,10 +139,22 @@ public class Customer : MonoBehaviour
         if (patienceLeft <= 0)
         {
             if (currentSeat != null) { currentSeat.containsCustomer = false; }
-            StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
+
+            // Move to an editable exit point if provided by GameManager, otherwise use exit Location
+            if (GameManager.Instance != null)
+            {
+                if (GameManager.Instance.exitPoint != null)
+                {
+                    StartCoroutine(MoveCharacter(GameManager.Instance.exitPoint.position));
+                }
+                else if (GameManager.Instance.exitLocation != null)
+                {
+                    StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
+                }
+            }
+
             // leave the restaurant angry. add loss points and clear customer data from the location
-        }
-    }
+        }    }
 
 
     private void UpdateAction(CustomerState state)
@@ -198,6 +269,7 @@ public class Customer : MonoBehaviour
 
                                 slot.storedFood = null;
 
+                                HideThoughtBubble();
                                 UpdateState(CustomerState.EatFood);
                                 isInteractable = false;
 
@@ -221,6 +293,7 @@ public class Customer : MonoBehaviour
 
             if (mealEatingTime <= 0)
             {
+                Debug.Log($"SUCCESS! Customer finished eating and is leaving satisfied!");
                 if (thoughtBubble != null) thoughtBubble.SetActive(false);
                 if (currentSeat != null) currentSeat.containsCustomer = false;
                 if (GameManager.Instance != null && GameManager.Instance.exitLocation != null)
@@ -254,6 +327,9 @@ public class Customer : MonoBehaviour
             currentSeat = locationToMoveTo;
             currentSeat.containsCustomer = true;
 
+            // Ensure a single customer arriving via this path faces the left seat (not flipped)
+            SetFacingRightSeat(false);
+
             if (state == CustomerState.WaitToBeSeated)
             {
                 // after finishing move, register the seat as their new interaction location
@@ -278,6 +354,15 @@ public class Customer : MonoBehaviour
             currentSeat = locationToMoveTo;
             if (currentSeat != null) currentSeat.containsCustomer = true;
 
+            // Determine whether this arrived position is left or right and flip accordingly
+            bool isRight = false;
+            Vector3 leftPos = (locationToMoveTo.leftSeatOffset != null) ? locationToMoveTo.leftSeatOffset.position : locationToMoveTo.transform.position + new Vector3(-0.25f, 0f, 0f);
+            Vector3 rightPos = (locationToMoveTo.rightSeatOffset != null) ? locationToMoveTo.rightSeatOffset.position : locationToMoveTo.transform.position + new Vector3(0.25f, 0f, 0f);
+            if (Vector3.Distance(this.transform.position, rightPos) < Vector3.Distance(this.transform.position, leftPos))
+                isRight = true;
+
+            SetFacingRightSeat(isRight);
+
             if (state == CustomerState.WaitToBeSeated)
             {
                 UpdateState(CustomerState.SelectMeal);
@@ -290,6 +375,25 @@ public class Customer : MonoBehaviour
         StartCoroutine(MoveCharacter(locationToMoveTo, targetPosition));
     }
 
+    // Move to an arbitrary position (used for exits and special points)
+    public IEnumerator MoveCharacter(Vector3 targetPosition)
+    {
+        this.transform.position = Vector2.MoveTowards(this.transform.position, targetPosition, moveSpeed / 3);
+        yield return null;
+
+        if (Vector2.Distance(this.transform.position, targetPosition) < 0.05f)
+        {
+            // arrived at arbitrary target; clear seat association
+            if (currentSeat != null)
+            {
+                currentSeat.containsCustomer = false;
+                currentSeat = null;
+            }
+            yield break;
+        }
+
+        StartCoroutine(MoveCharacter(targetPosition));
+    }
 
     public void OnInteract()
     {

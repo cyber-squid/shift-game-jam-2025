@@ -5,6 +5,7 @@ using UnityEngine;
 public class Kitchen : MonoBehaviour
 {
     static Queue<Food> foodQueue;
+    static Kitchen instance;
 
     [SerializeField] KitchenFoodSlot[] slots;
 
@@ -14,6 +15,7 @@ public class Kitchen : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        instance = this;
         foodQueue = new Queue<Food>();
         timeToNextFoodAppearing = foodTimer;
     }
@@ -21,22 +23,32 @@ public class Kitchen : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (foodQueue.Count > 0)
-        {
-            timeToNextFoodAppearing -= Time.deltaTime;
+        // Guard against missing queue or empty queue or missing slots
+        if (foodQueue == null || foodQueue.Count == 0 || slots == null || slots.Length == 0)
+            return;
 
-            if (timeToNextFoodAppearing < 0)
+        timeToNextFoodAppearing -= Time.deltaTime;
+
+        if (timeToNextFoodAppearing < 0)
+        {
+            for (int i = 0; i < slots.Length; i++)
             {
-                for (int i = 0; i < slots.Length; i++) 
+                var slot = slots[i];
+                if (slot == null) continue;
+
+                if (slot.storedFood == null && foodQueue.Count > 0)
                 {
-                    if (slots[i].storedFood == null) 
-                    { 
-                        slots[i].storedFood = foodQueue.Peek();
-                        slots[i].storedFoodSprite.sprite = slots[i].storedFood.foodPicture;
-                        foodQueue.Dequeue();
-                        timeToNextFoodAppearing = foodTimer;
-                        break;
+                    // Dequeue first to avoid race conditions and then assign safely
+                    var next = foodQueue.Dequeue();
+                    slot.storedFood = next;
+                    if (slot.storedFoodSprite != null && next != null)
+                    {
+                        slot.storedFoodSprite.sprite = next.foodPicture;
+                        slot.storedFoodSprite.enabled = true;
+                        slot.storedFoodSprite.gameObject.SetActive(true);
                     }
+                    timeToNextFoodAppearing = foodTimer;
+                    break;
                 }
             }
         }
@@ -44,12 +56,17 @@ public class Kitchen : MonoBehaviour
 
     public static void AddOrderToQueue(Food foodToAdd)
     {
+        if (foodQueue == null) foodQueue = new Queue<Food>();
+        if (foodToAdd == null) return;
+        
         foodQueue.Enqueue(foodToAdd);
     }
 
     public static void ClearSlot(KitchenFoodSlot foodToRemove)
     {
-        foodToRemove.storedFoodSprite.sprite = null;
+        if (foodToRemove == null) return;
+        if (foodToRemove.storedFoodSprite != null)
+            foodToRemove.storedFoodSprite.sprite = null;
         foodToRemove.storedFood = null;
     }
 }

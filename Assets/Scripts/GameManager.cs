@@ -60,6 +60,6 @@ public class GameManager : MonoBehaviour
     public void Restart()
     {
         Time.timeScale = timescale;
-        SceneManager.LoadScene("MainGame");
+        SceneManager.LoadScene("StartScreen");
     }
 }

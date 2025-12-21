@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -29,12 +30,24 @@ public class Customer : MonoBehaviour
 
     bool isInteractable = false;
     bool wasInteractedWith = false;
+    bool isMale;
     public Location currentSeat;
     public Customer pairedCustomer;
     Food chosenFood;
+    [SerializeField] SpriteRenderer characterSprite;
+    [SerializeField] SpriteRenderer mealSprite;
+    [SerializeField] Transform mealSpriteOffset;
+    public Sprite[] sitSprite;
+    public Sprite[] standSprite;
+    public Sprite[] readingSprite;
+    public Sprite[] handUpSprite;
+    public Sprite[] eatingSprite; // very very horrible bad way of programming this but dw i know that
 
     [SerializeField] GameObject selectionIndicator;
 
+
+    // hey chatgpt! this sucks! organise your code (that was my code) better next time!!
+    // or don't actually, because as annoying as it is to fix, the more annoying you are the less people will use you :p
     public void Select()
     {
         // Tint the primary sprite renderer(s) yellow to indicate selection
@@ -77,11 +90,16 @@ public class Customer : MonoBehaviour
         foreach (var sr in _spriteRenderers)
         {
             if (sr == null) continue;
-            // don't flip UI or thought bubble sprites
-            if (sr == _thoughtBubbleRenderer || sr == foodImage) continue;
+            // don't flip UI sprites
+            if (sr == foodImage) continue;
             sr.flipX = isRight;
+
+            
         }
-        
+        if (isRight)
+        {
+            mealSprite.gameObject.transform.position = mealSpriteOffset.transform.position;
+        }
         // Position thought bubble: left-seated keeps original position, right-seated uses offset
         if (thoughtBubble != null)
         {
@@ -130,6 +148,14 @@ public class Customer : MonoBehaviour
         {
             currentSeat = null;
         }
+
+        isMale = Convert.ToBoolean(UnityEngine.Random.Range(0, 2));
+
+        if (isMale)
+            characterSprite.sprite = standSprite[0];
+        else
+            characterSprite.sprite = standSprite[1];
+        
     }
 
     private void Update()
@@ -197,14 +223,11 @@ public class Customer : MonoBehaviour
             if (mealSelectionTime <= 0)
             {
                 if (GameManager.Instance != null)
-                {
                     chosenFood = GameManager.Instance.SelectFood();
-                }
+                
 
                 if (chosenFood != null && foodImage != null)
-                {
                     foodImage.sprite = chosenFood.foodPicture;
-                }
 
                 if (thoughtBubble != null)
                 {
@@ -212,6 +235,12 @@ public class Customer : MonoBehaviour
                 }
 
                 UpdateState(CustomerState.WaitForOrderTaken);
+
+                if (isMale)
+                    characterSprite.sprite = handUpSprite[0];
+                else
+                    characterSprite.sprite = handUpSprite[1];
+
                 isInteractable = true;
             }
         }
@@ -225,10 +254,17 @@ public class Customer : MonoBehaviour
             // if interacted with
             if (wasInteractedWith)
             {
+                print("take order?");
+
                 if (chosenFood != null)
                 {
                     Kitchen.AddOrderToQueue(chosenFood);
                     UpdateState(CustomerState.WaitForFood);
+
+                    if (isMale)
+                        characterSprite.sprite = sitSprite[0];
+                    else
+                        characterSprite.sprite = sitSprite[1];
                 }
 
                 wasInteractedWith = false;
@@ -252,6 +288,8 @@ public class Customer : MonoBehaviour
                         {
                             if (slot.storedFood == chosenFood)
                             {
+                                mealSprite.sprite = slot.storedFood.foodPicture;
+
                                 // food image should be copied onto the location in front of the customer. food should be deleted from the player's hand
                                 if (thoughtBubble != null)
                                     thoughtBubble.SetActive(true);
@@ -271,6 +309,16 @@ public class Customer : MonoBehaviour
 
                                 HideThoughtBubble();
                                 UpdateState(CustomerState.EatFood);
+                                // CHATGPT!! YOU ARE DUMBER THAN I AM!! DONT FORGET IT!!!!
+                                // what exactly is the point of turning the thought bubble on and off???
+                                
+
+
+                                if (isMale)
+                                    characterSprite.sprite = eatingSprite[0];
+                                else
+                                    characterSprite.sprite = eatingSprite[1];
+
                                 isInteractable = false;
 
                                 break;
@@ -295,7 +343,16 @@ public class Customer : MonoBehaviour
             {
                 Debug.Log($"SUCCESS! Customer finished eating and is leaving satisfied!");
                 if (thoughtBubble != null) thoughtBubble.SetActive(false);
+
                 if (currentSeat != null) currentSeat.containsCustomer = false;
+
+
+                if (isMale)
+                    characterSprite.sprite = standSprite[0];
+                else
+                    characterSprite.sprite = standSprite[1];
+
+
                 if (GameManager.Instance != null && GameManager.Instance.exitLocation != null)
                 {
                     StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
@@ -334,7 +391,17 @@ public class Customer : MonoBehaviour
             {
                 // after finishing move, register the seat as their new interaction location
                 UpdateState(CustomerState.SelectMeal);
+
+                if (isMale)
+                    characterSprite.sprite = readingSprite[0];
+                else
+                    characterSprite.sprite = readingSprite[1];
+
                 isInteractable = false;
+            }
+            if(state == CustomerState.EatFood)
+            {
+                Destroy(this.gameObject);
             }
 
             yield break;
@@ -366,6 +433,12 @@ public class Customer : MonoBehaviour
             if (state == CustomerState.WaitToBeSeated)
             {
                 UpdateState(CustomerState.SelectMeal);
+
+                if (isMale)
+                    characterSprite.sprite = readingSprite[0];
+                else
+                    characterSprite.sprite = readingSprite[1];
+
                 isInteractable = false;
             }
 

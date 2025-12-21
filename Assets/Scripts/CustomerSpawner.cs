@@ -5,7 +5,9 @@ using UnityEngine;
 public class CustomerSpawner : MonoBehaviour
 {
     public GameObject customerPrefab;
-    public float spawnInterval = 5f;
+    public float baseSpawnInterval = 5f;
+    float currentSpawnInterval;
+    float spawnTimer;
     public int maxCustomers = 5;
     public Transform[] spawnPoints;
 
@@ -41,18 +43,23 @@ public class CustomerSpawner : MonoBehaviour
                 pool.Add(go);
             }
         }
+        spawnTimer = baseSpawnInterval;
     }
 
-    IEnumerator Start()
-    {
-        while (true)
-        {
-            if (CountActiveCustomers() < maxCustomers)
-                SpawnCustomer();
 
-            yield return new WaitForSeconds(spawnInterval);
+    void Update()
+    {
+        spawnTimer -= Time.deltaTime;
+
+        if (spawnTimer < 0 && CountActiveCustomers() < maxCustomers) 
+        {
+            SpawnCustomer();
+            currentSpawnInterval = Random.Range(baseSpawnInterval - 2, baseSpawnInterval + 2);
+            spawnTimer = currentSpawnInterval;
         }
     }
+
+
 
     int CountActiveCustomers()
     {

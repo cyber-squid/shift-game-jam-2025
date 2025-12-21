@@ -93,12 +93,12 @@ public class Customer : MonoBehaviour
             // don't flip UI sprites
             if (sr == foodImage) continue;
             sr.flipX = isRight;
-
-            
+     
         }
         if (isRight)
         {
             mealSprite.gameObject.transform.position = mealSpriteOffset.transform.position;
+            thoughtBubble.GetComponent<SpriteRenderer>().flipX = true;
         }
         // Position thought bubble: left-seated keeps original position, right-seated uses offset
         if (thoughtBubble != null)
@@ -172,15 +172,18 @@ public class Customer : MonoBehaviour
                 if (GameManager.Instance.exitPoint != null)
                 {
                     StartCoroutine(MoveCharacter(GameManager.Instance.exitPoint.position));
+                    
                 }
                 else if (GameManager.Instance.exitLocation != null)
                 {
                     StartCoroutine(MoveCharacter(GameManager.Instance.exitLocation));
+
                 }
             }
 
             // leave the restaurant angry. add loss points and clear customer data from the location
-        }    }
+        }   
+    }
 
 
     private void UpdateAction(CustomerState state)
@@ -389,6 +392,11 @@ public class Customer : MonoBehaviour
 
             if (state == CustomerState.WaitToBeSeated)
             {
+                if (patienceLeft < 0)
+                {
+                    GameManager.Instance.AdjustPoints(-20);
+                    Destroy(gameObject);
+                }
                 // after finishing move, register the seat as their new interaction location
                 UpdateState(CustomerState.SelectMeal);
 
@@ -401,6 +409,7 @@ public class Customer : MonoBehaviour
             }
             if(state == CustomerState.EatFood)
             {
+                GameManager.Instance.AdjustPoints(15);
                 Destroy(this.gameObject);
             }
 
@@ -432,6 +441,12 @@ public class Customer : MonoBehaviour
 
             if (state == CustomerState.WaitToBeSeated)
             {
+                if (patienceLeft < 0)
+                {
+                    GameManager.Instance.AdjustPoints(-20);
+                    Destroy(gameObject);
+                }
+
                 UpdateState(CustomerState.SelectMeal);
 
                 if (isMale)
@@ -440,6 +455,11 @@ public class Customer : MonoBehaviour
                     characterSprite.sprite = readingSprite[1];
 
                 isInteractable = false;
+            }
+            if (state == CustomerState.EatFood)
+            {
+                GameManager.Instance.AdjustPoints(15);
+                Destroy(gameObject);
             }
 
             yield break;
